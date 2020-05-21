@@ -4,17 +4,29 @@ The Datastore is a header-only C++17 utility for storing/retrieving a wide varie
 
 ## Example
 
+Consider a `Track` class.  A `Track` may have many seperate algorithms that need to store data about the `Track` for different methodologies of following an object around the screen.  Each of the algorithms likely need to cache information about each specific `Track` object.  However we do not want fill up each algorithm with a list of track-specific information that it needs to sort and maintain.  That would be extremely cumbersome and expensive.  We also do not want to add an algorithm specific structure manually to the `Track` class - we only want to store information for algorithms that are actually being executed.
+
 ```cpp
-DataStore data;
+struct Track {
+   /// Generic tracking information
+   float positionX;
+   float positionY;
+   float velocityX;
+   float velocityY;
+   DataStore data;
+};
 
-Baz baz;
-data.insert<Foo>({});
-data.insert<Baz>(baz);
-data.emplace<Bar>();
+struct SpecialTrackData {
+   float boosterGains;
+};
 
-/// Sometime later...
-auto foo = data.get<Foo>();
-foo->update();
+void run_my_special_tracking_updates(Track& track) {
+   auto specialData = Track.data.get<SpecialTrackData>();
+   /// Update track positions with boosterGains!
+   /// ...
+   
+   specialData->boosterGains = /*Update gainz*/;
+}
 ```
 
 
