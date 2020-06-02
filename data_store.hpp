@@ -1,8 +1,8 @@
 #include <any>
 #include <functional>
 #include <map>
+#include <memory_resource>
 #include <memory>
-#include <sstream>
 #include <typeindex>
 
 #include "meta_programming.hpp"
@@ -66,24 +66,91 @@ namespace details
 
 #include <iostream>
 
+/// @brief
+///
+/// @tparam BufferSize: Size of the initial buffer for the underlying PMR Allocator
+/// @tparam Allocator: PMR allocator to use.  Default is the monotonic_buffer_resource.
+///          this allocator starts with a BufferSize buffer and expands as necessary.  No
+///          memory is released until the Allocator is deconstructed
+/// TODO: Is there any benefit to templating the Allocator itself? Or will 99.9% of people
+///       just use the default?
+template<
+   size_t BufferSize = 128,
+   typename Allocator = std::pmr::monotonic_buffer_resource>
 class DataStore
 {
 private:
 
+   /// The lookup key is the hash value of the given Class types type_index
+   /// We use the hash value instead of the type_index directly to avoid
+   /// the string comparisons of the type_index which could potentially be
+   /// very slow on map lookups.  Accomodations are provided to avoid
+   /// overlapping hashes
    using key_type = size_t;
+
+   /// @brief Get the unique key object
+   ///
+   /// @param type_index
+   /// @return size_t
+   static size_t get_unique_key(const std::type_index& type_index)
+   {
+      static std::set<size_t> hash_set;
+
+      // This function only expects to be called once per class type.  Therefore
+      //  if the hashcode is already in the map we need to respin it.  This looks
+      //  expensive (because it is).  However the number of different types being
+      //  created should be relatively few.  Where the number of times a given
+      //  type is inserted across many maps is quite large
+      // There is a pretty good chance hash clashing would never happen, but when it does
+      //  it would create some nasty bugs so lets try and avoid it with this small
+      //  overhead.
+      size_t hash = type_index.hash_code();
+
+      while(hash_set.find(hash) != std::end(hash_set))
+      {
+         hash = std::hash<size_t>{}(hash);
+      }
+
+      return hash;
+   }
 
    /// @brief Get the type key object
    ///
    /// @tparam T
    /// @return key_type
    template <typename T>
-   key_type get_type_key() const noexcept
+   static key_type get_type_key() noexcept
    {
-      static const key_type object_key = std::type_index(typeid(T)).hash_code();
+      static bool key_initialized = false;
+      static key_type object_key;
+
+      if(!key_initialized)
+      {
+         key_initialized = true;
+         get_unique_key(std::type_index(typeid(T)));
+      }
       return object_key;
    }
 
 public:
+
+   DataStore() :
+      _resource(&_stack_buffer, sizeof(_stack_buffer)),
+      _data(&_resource)
+   {}
+
+
+   DataStore(const DataStore& rhs) :
+      _resource(&_stack_buffer, sizeof(_stack_buffer)),
+      _data(rhs._data, _stack_buffer)
+   {}
+
+   DataStore(DataStore&& rhs) :
+      _stack_buffer (std::move(rhs._stack_buffer)),
+      _resource (std::move(rhs._resource)),
+      _data(std::move(rhs._data))
+   {}
+
    /// @brief Insert an object into the datastore.  If an object of the same type already exists replace it
    ///
    /// @tparam Object - Type of object to insert
@@ -128,7 +195,7 @@ public:
    typename details::const_pointer_return_type<Object>::type
    get() const noexcept
    {
-      static const details::const_pointer_return_type<Object>::type bad_value {nullptr};
+      static const typename details::const_pointer_return_type<Object>::type bad_value {nullptr};
 
       // TODO: If type is shared_ptr we want to be able to return it by refernece
       //  to avoid the refcount modification.  But need to be able to return a nullptr
@@ -187,7 +254,10 @@ public:
 
 private:
 
+   std::array<std::byte, BufferSize> _stack_buffer;
+   Allocator _resource;
+
    /// Stores the actual data
-   std::map<key_type, std::any> _data;
+   std::pmr::map<key_type, std::any> _data;
 
 };
