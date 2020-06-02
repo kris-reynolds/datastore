@@ -29,4 +29,9 @@ void run_my_special_tracking_updates(Track& track) {
 }
 ```
 
+## TODO
 
+- Add assignment/move assignment operators
+- Add unit tests for all the contructor/assignment types
+- Add to/from string/stream operations
+- Add tests for to/from string/stream operations
