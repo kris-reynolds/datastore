@@ -10,14 +10,14 @@ project(
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(ENABLE_EXAMPLES "OFF to disable example compilation" ON)
-option(ENABLE_TESTS "OFF to disable test compilation" ON)
+option(ENABLE_EXAMPLES "OFF to disable example compilation" OFF)
+option(ENABLE_TESTS "OFF to disable test compilation" OFF)
 
-# find_package(Catch2 REQUIRED)
 if(ENABLE_EXAMPLES)
   add_subdirectory(examples)
 endif()
 
 if(ENABLE_TESTS)
+  enable_testing()
   add_subdirectory(test)
 endif()

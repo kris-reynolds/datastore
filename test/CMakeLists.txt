@@ -8,6 +8,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
+#find_package(Catch2 REQUIRED)
+
 add_executable(tests tests.cpp)
 target_compile_features(tests PRIVATE cxx_std_17)
 target_include_directories(tests PRIVATE ${PROJECT_SOURCE_DIR})

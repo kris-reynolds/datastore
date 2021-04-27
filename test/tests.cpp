@@ -2,7 +2,7 @@
 
 #include "catch2/catch.hpp"
 
-#include "data_store.hpp"
+#include "datastore/data_store.hpp"
 
 struct Foo
 {

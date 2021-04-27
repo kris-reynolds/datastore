@@ -30,26 +30,6 @@ namespace details
    template <typename T>
    struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
 
-   // /// Determine at compile time if the object being stored has the to_json method
-   // ///  If it does we can add the object to the DataStore generated json string.
-   // ///  If it does not exist we can fail gracefully
-   // template <typename T>
-   // struct has_to_json_method
-   // {
-   // private:
-   //    typedef std::true_type yes;
-   //    typedef std::false_type no;
-
-   //    template <typename U>
-   //    static auto test(int) -> decltype(std::declval<U>().to_json() == 1, yes());
-
-   //    template <typename>
-   //    static no test(...);
-
-   // public:
-   //    static constexpr bool value = std::is_same<decltype(test<T>(0)), yes>::value;
-   // };
-
    template<typename Object>
    struct const_pointer_return_type {
       using type = typename std::conditional<details::is_shared_ptr<Object>::value, const Object,
@@ -72,11 +52,6 @@ namespace details
 /// @tparam Allocator: PMR allocator to use.  Default is the monotonic_buffer_resource.
 ///          this allocator starts with a BufferSize buffer and expands as necessary.  No
 ///          memory is released until the Allocator is deconstructed
-/// TODO: Is there any benefit to templating the Allocator itself? Or will 99.9% of people
-///       just use the default?
-template<
-   size_t BufferSize = 128,
-   typename Allocator = std::pmr::monotonic_buffer_resource>
 class DataStore
 {
 private:
@@ -134,22 +109,7 @@ private:
 
 public:
 
-   DataStore() :
-      _resource(&_stack_buffer, sizeof(_stack_buffer)),
-      _data(&_resource)
-   {}
-
-
-   DataStore(const DataStore& rhs) :
-      _resource(&_stack_buffer, sizeof(_stack_buffer)),
-      _data(rhs._data, _stack_buffer)
-   {}
-
-   DataStore(DataStore&& rhs) :
-      _stack_buffer (std::move(rhs._stack_buffer)),
-      _resource (std::move(rhs._resource)),
-      _data(std::move(rhs._data))
-   {}
+   DataStore() = default;
 
    /// @brief Insert an object into the datastore.  If an object of the same type already exists replace it
    ///
@@ -254,10 +214,7 @@ public:
 
 private:
 
-   std::array<std::byte, BufferSize> _stack_buffer;
-   Allocator _resource;
-
    /// Stores the actual data
-   std::pmr::map<key_type, std::any> _data;
+   std::map<key_type, std::any> _data;
 
 };
